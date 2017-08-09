@@ -15,12 +15,16 @@
  */
 package com.google.android.gms.samples.vision.ocrreader;
 
+import android.content.Context;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.util.SparseArray;
 
 import com.google.android.gms.samples.vision.ocrreader.ui.camera.GraphicOverlay;
 import com.google.android.gms.vision.Detector;
 import com.google.android.gms.vision.text.TextBlock;
+
+import java.util.Locale;
 
 /**
  * A very simple Processor which gets detected TextBlocks and adds them to the overlay
@@ -30,7 +34,11 @@ public class OcrDetectorProcessor implements Detector.Processor<TextBlock> {
 
     private GraphicOverlay<OcrGraphic> mGraphicOverlay;
 
-    OcrDetectorProcessor(GraphicOverlay<OcrGraphic> ocrGraphicOverlay) {
+    private TextToSpeech tts;
+    private Context context;
+
+    OcrDetectorProcessor(Context c, GraphicOverlay<OcrGraphic> ocrGraphicOverlay) {
+        context = c;
         mGraphicOverlay = ocrGraphicOverlay;
     }
 
@@ -47,12 +55,34 @@ public class OcrDetectorProcessor implements Detector.Processor<TextBlock> {
         SparseArray<TextBlock> items = detections.getDetectedItems();
         for (int i = 0; i < items.size(); ++i) {
             TextBlock item = items.valueAt(i);
-            if (item != null && item.getValue() != null) {
-                Log.d("OcrDetectorProcessor", "Text detected! " + item.getValue());
+            if (item != null && item.getValue() != null)
+            {
+                final String stuff = item.getValue();
+                Log.d("OcrDetectorProcessor", "Text detected! " + stuff);
+
+                TextToSpeech.OnInitListener listener =
+                        new TextToSpeech.OnInitListener() {
+                            @Override
+                            public void onInit(final int status) {
+                                if (status == TextToSpeech.SUCCESS) {
+                                    Log.d("OnInitListener", "Text to speech engine started successfully.");
+                                    tts.setLanguage(Locale.US);
+                                    read(stuff);
+                                } else {
+                                    Log.d("OnInitListener", "Error starting the text to speech engine.");
+                                }
+                            }
+                        };
+                tts = new TextToSpeech(context, listener);
             }
             OcrGraphic graphic = new OcrGraphic(mGraphicOverlay, item);
             mGraphicOverlay.add(graphic);
         }
+    }
+
+    private void read(String stuff)
+    {
+        tts.speak(stuff, TextToSpeech.QUEUE_FLUSH, null, "DEFAULT");
     }
 
     /**
